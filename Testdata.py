@@ -19,7 +19,7 @@ def orientation_testcases(case = "A"):
         t_ = np.array([0,1])
     
     if case == "E":
-        rec_length = 1000
+        rec_length = 100
         step = 0.01
         t_= np.arange(rec_length, step=step)
         freq_sin = .2

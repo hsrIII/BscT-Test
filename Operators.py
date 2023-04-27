@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from decimal import Decimal
+import ahrs
+
 
 def forwardoperator(attitudes, t_list):
     gyr_data = np.zeros((attitudes.shape[0],attitudes.shape[1]-1))
@@ -21,9 +24,9 @@ def q_to_angular_velocity(q1, q2, dt): #https://mariogc.com/post/angular-velocit
     w_norm = np.arccos(omega11)*2/dt
     
     if np.sin(w_norm*dt/2) == 0:                    #L'Hospital
-        wx = 1/(np.cos(w_norm*dt/2))*2/dt *omega21
-        wy = 1/(np.cos(w_norm*dt/2))*2/dt *omega31
-        wz = 1/(np.cos(w_norm*dt/2))*2/dt *omega41
+        wx = 1/(np.cos(w_norm*dt/2)) *omega21
+        wy = 1/(np.cos(w_norm*dt/2)) *omega31
+        wz = 1/(np.cos(w_norm*dt/2)) *omega41
     
     else:
         wx = omega21 * w_norm * 1/np.sin(w_norm*dt/2)
@@ -34,9 +37,12 @@ def q_to_angular_velocity(q1, q2, dt): #https://mariogc.com/post/angular-velocit
     return angular_velocity
 
 
-def simulate_sensor_events(gyr_data, t_list):
+def simulate_sensor_events(gyr_data, acc_data, t_list, method = "integrator"):
     attitudes = np.zeros((gyr_data.shape[0],gyr_data.shape[1]+1))
     timestamps = np.array([])
+
+    f = ahrs.filters.ekf.EKF(Dt = 0.01)
+
 
     for index in range(gyr_data.shape[0]):
         t = t_list[index]
@@ -48,33 +54,47 @@ def simulate_sensor_events(gyr_data, t_list):
             t_prev = timestamps[-1]
 
         wt = gyr_data[index,:]
-        dt = t-t_prev
+        at = acc_data[index,:]
+        #dt = t-t_prev
+        #q = f.update(q, wt, at, "series")
+        #q = integrator(wt, q, dt, t)[0]
         
-        q = integrator(wt, q, dt, t)[0]
+        q, t = angular_velocity_to_q(wt, q, t, t_prev, method = method)
         timestamps = np.append(timestamps, t)  
-
+        
         attitudes[index,:] = q
 
     return attitudes, timestamps
 
 
-def integrator(wt, q, dt, t=None):
-    step = dt
-    wx = wt[0]
-    wy = wt[1]
-    wz = wt[2]
+#def integrator(wt, q, dt, t=None):
+def angular_velocity_to_q(wt, q, t, t_prev, at = None, method = "integrator"):
+    methods = ["integrator", "EKF"]
+    if method not in methods:
+        raise ValueError(f"Method '{method}' is not defined. Defined methods: {methods}.")
 
-    w_norm = np.sqrt(np.dot(wt,wt))
-    Omega = np.array([[0,-wx,-wy,-wz],[wx,0,wz,-wy],[wy,-wz,0,wx],[wz,wy,-wx,0]])
-    Eins = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
+    if method == methods[0]:        #Integrator
+        # step = dt
+        step = t-t_prev
+        
+        wx = wt[0]
+        wy = wt[1]
+        wz = wt[2]
 
-    if w_norm == 0:
-        q_res = q
+        w_norm = np.linalg.norm(wt)
+        Omega = np.array([[0,-wx,-wy,-wz],[wx,0,wz,-wy],[wy,-wz,0,wx],[wz,wy,-wx,0]])
+        Eins = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 
-    else:
-        q_res = (np.cos(w_norm*step/2)*Eins+(1/w_norm)*np.sin(w_norm*step/2)*Omega)@q 
-        norm_q_res = np.sqrt(np.dot(q_res,q_res))
-        q_res = q_res/norm_q_res
+        if w_norm == 0:
+            q_res = q
+
+        else:                       
+            q_res = (np.cos(w_norm*step/2)*Eins+(1/w_norm)*np.sin(w_norm*step/2)*Omega)@q 
+            norm_q_res = np.sqrt(np.dot(q_res,q_res))
+            q_res = q_res/norm_q_res
+
+    if method == methods[1]:        #EKF
+        print("EKF to be implemented...")
 
     return q_res, t
 
@@ -204,4 +224,49 @@ def plot_res(attitudes, w_, q_res, t_ = None, error = []):
         axs2[row, 2].legend()
         axs2[row, 2].set_xlabel(r"time $t$")
 
-    return fig, fig2
+
+    return (fig, axs), (fig2, axs2)
+
+def plot_comparision(att_ref, att_res1, att_res2, t_ref, t_res1 = None, t_res2 = None):
+    if t_res1 == None:
+        t_res1 = t_ref
+    if t_res2 == None:
+        t_res2 = t_ref
+
+    fig = plt.figure(figsize=(13,7))
+    plt.rcParams['figure.constrained_layout.use'] = True
+    gs = GridSpec(4, 3, figure=fig)
+    
+    ax1 = fig.add_subplot(gs[0, 0])
+    ax1.plot(t_ref, att_ref)
+    ax1.set_title("Reference Att")
+    ax1.grid(True)
+    ax2 = fig.add_subplot(gs[0, 1])
+    ax2.plot(t_res1, att_res1)
+    ax2.set_title("Res Att 1")
+    ax2.grid(True)
+    ax3 = fig.add_subplot(gs[0, 2])
+    ax3.plot(t_res2, att_res2)
+    ax3.set_title("Res Att 2")
+    ax3.grid(True)
+
+    ax4 = fig.add_subplot(gs[1, :])
+    ax4.plot(t_ref, att_ref)
+    ax4.plot(t_res1, att_res1)
+    ax4.plot(t_res2, att_res2)
+    ax4.set_title("Att Ref  Res1  Res2")
+    ax4.grid(True)
+
+    ax5 = fig.add_subplot(gs[2, :])
+    ax5.plot(t_ref, att_ref-att_res1)
+    ax5.set_title("ref-res1")
+    ax5.grid(True)
+
+    ax6 = fig.add_subplot(gs[3, :])
+    ax6.plot(t_ref, att_ref-att_res2)
+    ax6.set_title("ref-res2")
+    ax6.grid(True)
+
+    fig.suptitle(f"Comparing two results")
+
+    return fig
