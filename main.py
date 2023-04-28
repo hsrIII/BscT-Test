@@ -1,14 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
-import Operators as _qOp
+import Operators
 import Testdata
-import ahrs
 
-
-Testdata.print_case = False
-Testdata.signal_length = 10
-Testdata.sampling_rate = 0.01
-_qOp.sampling_rate = Testdata.sampling_rate
+_qOp = Operators.Operators()
+Testdata = Testdata.Testdata(print_case = False)
 
 # Reference Attitude
 print(f"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 01 reference attitude")
