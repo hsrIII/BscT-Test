@@ -1,6 +1,11 @@
 import numpy as np
 import Operators as _qOp
 
+
+print_case = False
+signal_length = 100   # in seconds
+sampling_rate = 0.01
+
 def orientation_testcases(case = "A"):
     if case == "A":
         attitudes = np.array([[1,0,0,0],[1,0,0,0]])
@@ -19,8 +24,8 @@ def orientation_testcases(case = "A"):
         t_ = np.array([0,1])
     
     if case == "E":
-        rec_length = 100
-        step = 0.01
+        rec_length = signal_length
+        step = sampling_rate
         t_= np.arange(rec_length, step=step)
         freq_sin = .2
         
@@ -30,8 +35,8 @@ def orientation_testcases(case = "A"):
         attitudes = _qOp.spherecoord_in_q(omega, theta, phi)
         
     if case == "F":
-        rec_length = 1000
-        step = 0.01
+        rec_length = signal_length
+        step = sampling_rate
         t_= np.arange(rec_length, step=step)
         freq_sin = .2
 
@@ -42,14 +47,15 @@ def orientation_testcases(case = "A"):
         attitudes = _qOp.spherecoord_in_q(omega, theta, phi)
     
     if case == "G":
-        step = 0.01
-        t_ = np.array([0.0, 0.01, 0.02, 0.03, 0.04])
+        step = sampling_rate
+        t_ = np.arange(sampling_rate*5, step = sampling_rate)
         omega = np.array([0,0.25, 0.5, 0.75, 1])*np.pi/2
         theta = omega
         phi = omega
         attitudes = _qOp.spherecoord_in_q(omega, theta, phi)
 
-    print(f"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 01 Q Testcase {case}:\nattitudes:\n {attitudes.round(2)}, \nt_array:\n {t_}")
+    if print_case == True:
+        print(f"------------------------------------------------------------------ Att. Testcase {case}:\nattitudes:\n {attitudes.round(2)}, \nt_array:\n {t_}")
     return attitudes, t_
 
 
@@ -76,11 +82,11 @@ def wtestcases(case = "A"):
 
     if case == "F": #oneaxial data gyro
         w_ = np.array([[0,0,0],[0,0,0],[0,0,100],[0,0,100],[0,0,100]])
-        t_ = np.arange(0.05, step = 0.01)
+        t_ = np.arange(sampling_rate*5, step = sampling_rate)
 
     if case == "G":
         w_ = np.array([np.ones(100),np.zeros(100), np.zeros(100)]).T
-        t_ = np.arange(1,step=0.01)
+        t_ = np.arange(sampling_rate*100, step=sampling_rate)
 
     print(f"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 01 Q Testcase {case}:\nAngular velocities:\n {w_.round(2)}, \nt_array:\n {t_}")
     return w_, t_

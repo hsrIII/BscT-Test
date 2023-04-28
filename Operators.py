@@ -3,16 +3,28 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 from decimal import Decimal
 import ahrs
+import Testdata
 
+gravity_vector = np.array([0,0,-9.81])
+
+sampling_rate = 0.01
+filter_ekf = ahrs.filters.ekf.EKF(Dt=sampling_rate)
+filter_ang_rate = ahrs.filters.angular.AngularRate(Dt=sampling_rate)
+w_to_q_methods = ["by hand", "integrator", "EKF"]
 
 def forwardoperator(attitudes, t_list):
-    gyr_data = np.zeros((attitudes.shape[0],attitudes.shape[1]-1))
+    gyr_data = np.zeros((attitudes.shape[0],3))
+    acc_data = np.zeros((attitudes.shape[0],3))
     
-    for i in range(1, len(gyr_data)):
-        dt = t_list[i] - t_list[i - 1]
-        gyr_data[i] = q_to_angular_velocity(attitudes[i - 1], attitudes[i], dt)
-
-    return gyr_data, t_list
+    for i in range(attitudes.shape[0]):
+        q = attitudes[i]
+        q_prev = attitudes[i - 1]
+        dt = t_list[i] - t_list[i - 1]        
+        if i > 0:     # first element in gyr_data is [0,0,0]
+            gyr_data[i] = q_to_angular_velocity(q_prev, q, dt)
+        acc_data[i] = q_to_accelerometer_measurement(q)
+    
+    return gyr_data, acc_data
 
 
 def q_to_angular_velocity(q1, q2, dt): #https://mariogc.com/post/angular-velocity-quaternions/; q1 = qt, q2 = qt+1
@@ -37,45 +49,42 @@ def q_to_angular_velocity(q1, q2, dt): #https://mariogc.com/post/angular-velocit
     return angular_velocity
 
 
-def simulate_sensor_events(gyr_data, acc_data, t_list, method = "integrator"):
-    attitudes = np.zeros((gyr_data.shape[0],gyr_data.shape[1]+1))
-    timestamps = np.array([])
+def q_to_accelerometer_measurement(q):
+    rot_matrix = q_to_rotation_matrix(q)
+    at = np.linalg.inv(rot_matrix)@gravity_vector
+    return at
 
-    f = ahrs.filters.ekf.EKF(Dt = 0.01)
 
+def simulate_sensor_events(gyr_data, acc_data, t_list, method = "by hand"):
+        attitudes = np.zeros((gyr_data.shape[0],4))
+        timestamps = np.array([])
 
-    for index in range(gyr_data.shape[0]):
-        t = t_list[index]
-        if index == 0:
-            t_prev = 0
-            q = np.array([1,0,0,0])             #Annahme: q(t=0)=[1,0,0,0]
+        for index in range(gyr_data.shape[0]):
+            t = t_list[index]
+            if index == 0:
+                t_prev = 0
+                q = np.array([1,0,0,0])             #Annahme: q(t=0)=[1,0,0,0]
+                
+            else:
+                t_prev = timestamps[-1]
+
+            wt = gyr_data[index,:]
+            at = acc_data[index,:]
             
-        else:
-            t_prev = timestamps[-1]
+            q, t = angular_velocity_to_q(wt, at, q, t, t_prev, method = method)
+            timestamps = np.append(timestamps, t)  
+            
+            attitudes[index,:] = q
 
-        wt = gyr_data[index,:]
-        at = acc_data[index,:]
-        #dt = t-t_prev
-        #q = f.update(q, wt, at, "series")
-        #q = integrator(wt, q, dt, t)[0]
-        
-        q, t = angular_velocity_to_q(wt, q, t, t_prev, method = method)
-        timestamps = np.append(timestamps, t)  
-        
-        attitudes[index,:] = q
-
-    return attitudes, timestamps
+        return attitudes, timestamps
 
 
-#def integrator(wt, q, dt, t=None):
-def angular_velocity_to_q(wt, q, t, t_prev, at = None, method = "integrator"):
-    methods = ["integrator", "EKF"]
-    if method not in methods:
-        raise ValueError(f"Method '{method}' is not defined. Defined methods: {methods}.")
-
-    if method == methods[0]:        #Integrator
-        # step = dt
-        step = t-t_prev
+def angular_velocity_to_q(wt, at, q, t, t_prev, method = "by hand"):
+    if method not in w_to_q_methods:
+        raise ValueError(f"Method '{method}' is not available. Available methods: {w_to_q_methods}.")
+    
+    if method == w_to_q_methods[0]: 
+        dt = t-t_prev
         
         wx = wt[0]
         wy = wt[1]
@@ -89,12 +98,15 @@ def angular_velocity_to_q(wt, q, t, t_prev, at = None, method = "integrator"):
             q_res = q
 
         else:                       
-            q_res = (np.cos(w_norm*step/2)*Eins+(1/w_norm)*np.sin(w_norm*step/2)*Omega)@q 
-            norm_q_res = np.sqrt(np.dot(q_res,q_res))
+            q_res = (np.cos(w_norm*dt/2)*Eins+(1/w_norm)*np.sin(w_norm*dt/2)*Omega)@q 
+            norm_q_res = np.linalg.norm(q_res)
             q_res = q_res/norm_q_res
 
-    if method == methods[1]:        #EKF
-        print("EKF to be implemented...")
+    if method == w_to_q_methods[1]:        #integrator of ahrs, similar method to "by hand"
+        q_res = filter_ang_rate.update(q, wt, method = "closed")  
+
+    if method == w_to_q_methods[2]:        #EKF
+        q_res = filter_ekf.update(q, wt, at)
 
     return q_res, t
 
@@ -111,18 +123,7 @@ def spherecoord_in_q(omega, theta, phi): # Bahn auf Kugeloberfläche, umgerechne
 
     return attitudes
 
-def attitudes_to_acc_data(attitudes):
-    acc_data = np.zeros((attitudes.shape[0],3))
-    gravity_vector = np.array([0,0,-9.81])
-
-    for index in range(attitudes.shape[0]):
-        q = attitudes[index,:]
-        rot_matrix = quaternion_to_rotation_matrix(q)
-        acc_data[index,:] = np.linalg.inv(rot_matrix)@gravity_vector
-
-    return acc_data
-
-def quaternion_to_rotation_matrix(q): #https://automaticaddison.com/how-to-convert-a-quaternion-to-a-rotation-matrix/
+def q_to_rotation_matrix(q): #https://automaticaddison.com/how-to-convert-a-quaternion-to-a-rotation-matrix/
     """
     Covert a quaternion into a full three-dimensional rotation matrix.
 
