@@ -2,11 +2,12 @@ import numpy as np
 import Operators
 
 class Testdata:
-    def __init__(self, print_case = False, signal_length = 100, _qOp = Operators.Operators()):
+    def __init__(self, print_case = False, signal_length = 100, sampling_rate = 0.01, _qOp = Operators.Operators()):
         self.print_case = print_case
-        self._qOp = _qOp
         self.signal_length = signal_length   # in seconds
-        self.sampling_rate = _qOp.sampling_rate
+        self.sampling_rate = sampling_rate
+        self._qOp = _qOp
+        
         
 
     def orientation_testcases(self, case = "A"):

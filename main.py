@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 import Operators
 import Testdata
 
-_qOp = Operators.Operators()
-Testdata = Testdata.Testdata(print_case = False)
+Testdata = Testdata.Testdata(print_case = False, sampling_rate = 10)
+_qOp = Operators.Operators(sampling_rate = Testdata.sampling_rate)
 
 # Reference Attitude
 print(f"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ 01 reference attitude")
