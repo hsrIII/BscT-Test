@@ -37,7 +37,7 @@ class Operators:
         
         w_norm = np.arccos(omega11)*2/dt
         
-        if np.sin(w_norm*dt/2) == 0:                    #L'Hospital
+        if np.abs(np.sin(w_norm*dt/2)) < 1e-8: #== 0:                    #L'Hospital
             wx = 1/(np.cos(w_norm*dt/2)) *omega21
             wy = 1/(np.cos(w_norm*dt/2)) *omega31
             wz = 1/(np.cos(w_norm*dt/2)) *omega41
@@ -80,11 +80,10 @@ class Operators:
 
             return attitudes, timestamps
 
-
     def angular_velocity_to_q(self, wt, at, q, t, t_prev, method = "by hand"):
         if method not in self.w_to_q_methods:
             raise ValueError(f"Method '{method}' is not available. Available methods: {self.w_to_q_methods}.")
-        
+        #print(f"wt, q: {wt}, {q}")
         if method == self.w_to_q_methods[0]: 
             dt = t-t_prev
             
@@ -96,7 +95,7 @@ class Operators:
             Omega = np.array([[0,-wx,-wy,-wz],[wx,0,wz,-wy],[wy,-wz,0,wx],[wz,wy,-wx,0]])
             Eins = np.array([[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]])
 
-            if w_norm == 0:
+            if w_norm < 1e-8: # ==0
                 q_res = q
 
             else:                       
@@ -270,5 +269,21 @@ class Operators:
         ax6.grid(True)
 
         fig.suptitle(f"Comparing two results")
+
+    def plot_one(self, y_, t_, name=None):
+        fig = plt.figure(figsize=(13, 7))
+        plt.rcParams['figure.constrained_layout.use'] = True
+        plt.title(f"{name}")
+        plt.suptitle(f"t[0] = {t_[0]}, t[-1] = {t_[-1]}, t.size = {t_.size}, Average Sampling Rate: (t[-1]-t[0])/t.size = {(t_[-1]-t_[0])/t_.size} s")
+        if y_.shape[1]==4:
+            plt.plot(t_, y_, label=['qw', 'qi', 'qj', 'qk'], linestyle="-")
+            plt.ylabel(r"$\mathbf{q}$")
+        if y_.shape[1]==3:
+            plt.plot(t_, y_, label=[f'{name}_x', f'{name}_y', f'{name}_z'], linestyle="-")
+            plt.ylabel(f"{name} values")
+        plt.legend()
+        plt.grid(True)
+        plt.xlabel(r"time $t$")
+
 
         return fig
