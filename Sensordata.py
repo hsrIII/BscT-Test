@@ -17,51 +17,6 @@ class InputReader:
         self.wy_bias = 6.677578750560675
         self.wz_bias = -5.771425796114199
 
-    # unused function, real_sensor_events() modeled after read_devide
-    '''
-    def read_device(self, event_type = None, maxevents = None, printit = False):
-        print("reading device...")
-        event_count = 0
-        events = []
-        for event in self._device.read_loop():
-            print()
-            t = event.timestamp()
-            print(t)
-            #print(f"code: {event.code}")
-            print(f"event.value: {event.value}")
-            #print(f"evdev.ecodes.BTN_DPAD_DOWN: {evdev.ecodes.BTN_DPAD_DOWN}")
-            print(f"event.type: {event.type}")
-            #print(f"evdev.ecodes.EV_Key: {evdev.ecodes.EV_KEY}")
-            print(f"evdev.ecodes.ecodes['ABS_X']: {evdev.ecodes.ecodes['ABS_X']}")
-            print(f"evdev.ecodes.ecodes['ABS_Y']: {evdev.ecodes.ecodes['ABS_Y']}")
-            print(f"evdev.ecodes.ecodes['ABS_Z']: {evdev.ecodes.ecodes['ABS_Z']}")
-            print(f"evdev.ecodes.ecodes['ABS_RX']: {evdev.ecodes.ecodes['ABS_RX']}")
-            print(f"evdev.ecodes.ecodes['ABS_RY']: {evdev.ecodes.ecodes['ABS_RY']}")
-            print(f"evdev.ecodes.ecodes['ABS_RZ']: {evdev.ecodes.ecodes['ABS_RZ']}")
-
-            print(f"self._device.absinfo: {self._device.absinfo(evdev.ecodes.ecodes['ABS_RZ'])}")
-
-            if str(printit) == "cat":
-                print(evdev.categorize(event))
-
-            else:
-                if event_type != None:
-                    if event.type == event_type:
-                        if printit == True:
-                            print(f"{event.type} |  {event}")
-                        #event_count = event_count+1
-                        #events.append(event)
-                else:
-                    if printit == True:
-                        print(f"{event.type} |  {event}")
-            events.append(event)
-            event_count = event_count+1
-            if maxevents != None:
-                if event_count >= maxevents:
-                    print(f"... read {event_count} events")
-                    return events
-    '''
-
     def real_sensor_events(self, method="by hand"):
         attitudes = np.empty((0,4), float)  # empty array
         timestamps = np.array([])
