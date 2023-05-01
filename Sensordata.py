@@ -1,8 +1,8 @@
 import evdev
 import numpy as np
-import websocket
-import json
-import time
+#import websocket
+#import json
+#import time
 import Operators
 
 
@@ -13,10 +13,12 @@ class InputReader:
         self._channel = None
         self._qOp = Operators.Operators()
         self.rec_length = 2
-        self.wx_bias = 0
-        self.wy_bias = 0
-        self.wz_bias = 0
+        self.wx_bias = -0.5359484696760158
+        self.wy_bias = 6.677578750560675
+        self.wz_bias = -5.771425796114199
 
+    # unused function, real_sensor_events() modeled after read_devide
+    '''
     def read_device(self, event_type = None, maxevents = None, printit = False):
         print("reading device...")
         event_count = 0
@@ -58,7 +60,7 @@ class InputReader:
                 if event_count >= maxevents:
                     print(f"... read {event_count} events")
                     return events
-
+    '''
 
     def real_sensor_events(self, method="by hand"):
         attitudes = np.empty((0,4), float)  # empty array
@@ -121,7 +123,7 @@ class InputReader:
 
     def calibrate(self, duration = 5):
         input("put controller down and input 'Enter'-key at the end of this line to start gyro calibration: ")
-        print("starting calibration")
+        print(" ... calibrating, do not move sensor ... ")
         wx_data = np.array([])
         wy_data = np.array([])
         wz_data = np.array([])
@@ -144,7 +146,7 @@ class InputReader:
             wy_data = np.append(wy_data, wy)
             wz_data = np.append(wz_data, wz)
 
-        print(wx_data, wy_data, wz_data)
+        #print(wx_data, wy_data, wz_data)
         self.wx_bias = np.mean(wx_data)
         self.wy_bias = np.mean(wy_data)
         self.wz_bias = np.mean(wz_data)
