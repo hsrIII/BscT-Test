@@ -17,12 +17,31 @@ class InputReader:
         self.wy_bias = 6.677578750560675
         self.wz_bias = -5.771425796114199
 
+        self.gyr_data = None
+        self.acc_data = None
+        self.timestamps = None
+
+        # TODO: How do Acc. commonly use + and - values?
+        #  acc. to /https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/imu_sensor_notes.md
+        #   Acc. lying still produce + value because Force is acting upwards
+        #   if this is true - can inverting the coord. frame be made unnessesary?
+        self.invert_acc_coord_frame = True
+        '''
+        Scaling Gyro Values according to
+        /https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/imu_sensor_notes.md
+        Multiplying with 2+pi to get angular rate rad/s from rpm 
+        '''
+        # wx, wy, wz seemed to high --> fixed it by multiplying with 1/1000, was written with mX instead of kX!
+        # w_scaling = 0.0001694 * 2*np.pi * 1/1000
+        # Accelerometer Scaling value also has false prefixes, yet value is still correct because it is multiplied
+        #  with 1/1000 on the website
+        self.w_scaling = 4000/(2*32767000+1000)/360 * 2*np.pi
+
     def real_sensor_events(self, method="by hand"):
         attitudes = np.empty((0,4), float)  # empty array
         timestamps = np.array([])
         gyr_data = np.empty((0,3), float)
         acc_data = np.empty((0, 3), float)
-
 
         for event in self._device.read_loop():
             if len(timestamps) == 0:
@@ -39,6 +58,7 @@ class InputReader:
                 break
 
             wx_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RX'])
+            #print(f"wx_absinfo: {wx_absinfo}")
             wy_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RY'])
             wz_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RZ'])
             '''
@@ -46,18 +66,24 @@ class InputReader:
             /https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/imu_sensor_notes.md
             Multiplying with 2+pi to get angular rate rad/s from rpm 
             '''
-            wx = 2*np.pi * wx_absinfo.value * 0.0001694
-            wy = 2*np.pi * wy_absinfo.value * 0.0001694
-            wz = 2*np.pi * wz_absinfo.value * 0.0001694
-            #print(1/wx_absinfo.resolution)
+            #TODO: wx, wy, wz seem to high
+            wx = wx_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
+            wy = wy_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
+            wz = wz_absinfo.value * self.w_scaling #0.0001694 * 2*np.pi
+
 
             ax_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_X'])
             ay_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_Y'])
             az_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_Z'])
 
-            ax = ax_absinfo.value / ax_absinfo.resolution
-            ay = ay_absinfo.value / ay_absinfo.resolution
-            az = az_absinfo.value / az_absinfo.resolution
+            if self.invert_acc_coord_frame == True:
+                inv_f = -1
+            else:
+                inv_f = 1
+            #TODO: ax is likely falsely scaled! Use value from website https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/imu_sensor_notes.md#normal-8000-mg
+            ax = ax_absinfo.value / ax_absinfo.resolution * inv_f
+            ay = ay_absinfo.value / ay_absinfo.resolution * inv_f
+            az = az_absinfo.value / az_absinfo.resolution * inv_f
 
             wx = wx - self.wx_bias
             wy = wy - self.wy_bias
@@ -72,6 +98,9 @@ class InputReader:
             gyr_data = np.append(gyr_data, np.array([wt]), axis=0)
             acc_data = np.append(acc_data, np.array([at]), axis=0)
 
+        self.gyr_data = gyr_data
+        self.acc_data = acc_data
+        self.timestamps = timestamps
 
         return attitudes, timestamps, gyr_data, acc_data
 
@@ -93,9 +122,9 @@ class InputReader:
             wy_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RY'])
             wz_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RZ'])
 
-            wx = 2*np.pi * wx_absinfo.value * 0.0001694
-            wy = 2*np.pi * wy_absinfo.value * 0.0001694
-            wz = 2*np.pi * wz_absinfo.value * 0.0001694
+            wx = wx_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
+            wy = wy_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
+            wz = wz_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
 
             wx_data = np.append(wx_data, wx)
             wy_data = np.append(wy_data, wy)

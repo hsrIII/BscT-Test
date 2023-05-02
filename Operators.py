@@ -6,7 +6,7 @@ import ahrs
 
 
 class Operators:
-    def __init__(self, gravity_vector = np.array([0,0,-9.81]), sampling_rate = 0.01):
+    def __init__(self, gravity_vector = np.array([0,0,-9.81]), sampling_rate = 0.015):
         self.gravity_vector = gravity_vector
         self.sampling_rate = sampling_rate
 
@@ -292,7 +292,7 @@ class Operators:
         return fig
 
 
-    def plot_cuboid(self, center, size, q): #https://stackoverflow.com/questions/56332197/rotate-3d-object-with-euler-angles-in-python
+    def plot_cuboid(self, center, size, q, t = None): #https://stackoverflow.com/questions/56332197/rotate-3d-object-with-euler-angles-in-python
         """
        Create a data array for cuboid plotting.
        ============= ================================================
@@ -393,7 +393,7 @@ class Operators:
         ax.axes.set_zlim3d(bottom=-2.5, top=2.5)
 
         ## Add title
-        plt.title('Plot Title', fontsize=20)
+        plt.title(f't = {str(t)}')
 
         ##labelling the axes
         ax.set_xlabel('X')
@@ -407,7 +407,7 @@ class Operators:
         for i, q in enumerate(attitudes):
             t = t_[i]
             if t - t0 > dt:
-                self.plot_cuboid((0, 0, 0), (1, 2, 0.5), q)
+                self.plot_cuboid((0, 0, 0), (1, 2, 0.5), q, t)
                 plt.show(block=False)
                 plt.pause(0.000001)
                 plt.close()

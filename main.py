@@ -44,6 +44,7 @@ def use_testdata():
 def use_sensor():
     IR.show_devices()
     IR.device = int(input("select #Nr. of IMU: "))
+    IR.invert_acc_coord_frame = True
     if input("calibrate sensor? ('n' to use default calibration) y,n: ").lower() == "y":
         IR.calibrate(int(input("calibrate for how many seconds?: ")))
 
@@ -56,11 +57,10 @@ def use_sensor():
     if input("animate senor data (WARNING: can be computationally expensive)? y,n: ").lower() == "y":
         _qOp.animate_attitudes(q_array, t_, float(input("enter time dt between plots in seconds: ")))
 
-    #print(f"biases: {IR.wx_bias, IR.wy_bias, IR.wz_bias}")
-
     plot = _qOp.plot_one(q_array, t_, "q")
     plot_gyr = _qOp.plot_one(gyr_data, t_, "w")
     plot_acc = _qOp.plot_one(acc_data, t_, "a")
     plt.show()
+
 
 use_sensor()
