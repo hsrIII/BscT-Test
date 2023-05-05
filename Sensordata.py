@@ -17,6 +17,10 @@ class InputReader:
         self.wy_bias = 6.677578750560675
         self.wz_bias = -5.771425796114199
 
+        self.gyr_data_raw = None
+        self.acc_data_raw = None
+        self.timestamps_raw = None
+
         self.gyr_data = None
         self.acc_data = None
         self.timestamps = None
@@ -36,6 +40,37 @@ class InputReader:
         # Accelerometer Scaling value also has false prefixes, yet value is still correct because it is multiplied
         #  with 1/1000 on the website
         self.w_scaling = 4000/(2*32767000+1000)/360 * 2*np.pi
+
+    def read_sensor(self):
+        gyr_data_raw = np.empty((0, 3), float)
+        acc_data_raw = np.empty((0, 3), float)
+        timestamps_raw = np.array([])
+        print(" ... recording ... ")
+        for event in self._device.read_loop():
+            t = event.timestamp()
+            if len(timestamps_raw) == 0:
+                t0 = t
+            if (t-t0) > self.rec_length:
+                print("recording stopped")
+                break
+
+            wx_raw = self._device.absinfo(evdev.ecodes.ecodes['ABS_RX']).value
+            wy_raw = self._device.absinfo(evdev.ecodes.ecodes['ABS_RY']).value
+            wz_raw = self._device.absinfo(evdev.ecodes.ecodes['ABS_RZ']).value
+            wt_raw = np.array([wx_raw, wy_raw, wz_raw])
+
+            ax_raw = self._device.absinfo(evdev.ecodes.ecodes['ABS_X']).value
+            ay_raw = self._device.absinfo(evdev.ecodes.ecodes['ABS_Y']).value
+            az_raw = self._device.absinfo(evdev.ecodes.ecodes['ABS_Z']).value
+            at_raw = np.array([ax_raw, ay_raw, az_raw])
+
+            gyr_data_raw = np.append(gyr_data_raw, np.array([wt_raw]), axis=0)
+            acc_data_raw = np.append(acc_data_raw, np.array([at_raw]), axis=0)
+            timestamps_raw = np.append(timestamps_raw, t)
+
+        self.gyr_data_raw = gyr_data_raw
+        self.acc_data_raw = acc_data_raw
+        self.timestamps_raw = timestamps_raw
 
     def real_sensor_events(self, method="by hand"):
         attitudes = np.empty((0,4), float)  # empty array
@@ -58,7 +93,6 @@ class InputReader:
                 break
 
             wx_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RX'])
-            #print(f"wx_absinfo: {wx_absinfo}")
             wy_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RY'])
             wz_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_RZ'])
             '''
@@ -66,11 +100,9 @@ class InputReader:
             /https://github.com/dekuNukem/Nintendo_Switch_Reverse_Engineering/blob/master/imu_sensor_notes.md
             Multiplying with 2+pi to get angular rate rad/s from rpm 
             '''
-            #TODO: wx, wy, wz seem to high
             wx = wx_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
             wy = wy_absinfo.value * self.w_scaling#0.0001694 * 2*np.pi
             wz = wz_absinfo.value * self.w_scaling #0.0001694 * 2*np.pi
-
 
             ax_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_X'])
             ay_absinfo = self._device.absinfo(evdev.ecodes.ecodes['ABS_Y'])

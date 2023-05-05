@@ -57,10 +57,29 @@ def use_sensor():
     if input("animate senor data (WARNING: can be computationally expensive)? y,n: ").lower() == "y":
         _qOp.animate_attitudes(q_array, t_, float(input("enter time dt between plots in seconds: ")))
 
-    plot = _qOp.plot_one(q_array, t_, "q")
-    plot_gyr = _qOp.plot_one(gyr_data, t_, "w")
-    plot_acc = _qOp.plot_one(acc_data, t_, "a")
-    plt.show()
+    #plot = _qOp.plot_one(q_array, t_, "q")
+    #plot_gyr = _qOp.plot_one(gyr_data, t_, "w")
+    #plot_acc = _qOp.plot_one(acc_data, t_, "a")
+    #plt.show()
+    _qOp.writetotxt(gyr_data, "01_gyr_data")
+    _qOp.writetotxt(acc_data, "01_gyr_data")
+    _qOp.writetotxt(t_, "01_timestamps")
 
+def read_sensor():
+    IR.show_devices()
+    IR.device = int(input("select #Nr. of IMU: "))
 
-use_sensor()
+    IR.rec_length = int(input("Record sensor data for how many seconds?: "))
+    IR.read_sensor()
+
+    return IR.gyr_data_raw, IR.acc_data_raw, IR.timestamps_raw
+
+#gyr_data, acc_data, timestamps = read_sensor()
+#print(gyr_data, acc_data, timestamps)
+'''
+IR.writetotxt(gyr_data)#"01_gyr_data"
+IR.writetotxt(acc_data)#01_acc_data
+IR.writetotxt(timestamps)#01_timestamps
+'''
+#01: sensor laying still for 2 min
+#02: turning sensor for 1 min
